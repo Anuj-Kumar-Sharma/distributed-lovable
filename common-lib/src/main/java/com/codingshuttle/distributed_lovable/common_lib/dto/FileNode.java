@@ -1,4 +1,5 @@
-package com.codingshuttle.distributed_lovable.workspace_service.dto.project;
+package com.codingshuttle.distributed_lovable.common_lib.dto;
+
 
 public record FileNode(
         String path

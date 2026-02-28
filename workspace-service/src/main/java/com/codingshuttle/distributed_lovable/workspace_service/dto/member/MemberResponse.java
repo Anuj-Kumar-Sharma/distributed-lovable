@@ -1,6 +1,7 @@
 package com.codingshuttle.distributed_lovable.workspace_service.dto.member;
 
-import com.codingshuttle.projects.lovable_clone.enums.ProjectRole;
+
+import com.codingshuttle.distributed_lovable.common_lib.enums.ProjectRole;
 
 import java.time.Instant;
 
@@ -8,7 +9,7 @@ public record MemberResponse(
         Long userId,
         String username,
         String name,
-        ProjectRole role,
+        ProjectRole projectRole,
         Instant invitedAt
 ) {
 }

@@ -1,3 +1,5 @@
 spring:
   application:
     name: intelligence-service
+  config:
+    import: configserver:http://localhost:8888
