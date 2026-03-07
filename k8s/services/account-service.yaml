@@ -1,0 +1,88 @@
+# k8s/services/account-service.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: account-service
+  namespace: lovable-core
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: account-service
+  template:
+    metadata:
+      labels:
+        app: account-service
+    spec:
+      containers:
+        - name: account-service
+          image: anuj55149/lovable-account-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 9050      
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: k8s
+            - name: CONFIG_SERVER_URL
+              value: http://config-service.lovable-core.svc.cluster.local:8888
+            - name: SPRING_CLOUD_CONFIG_FAIL_FAST
+              value: "false"          
+            - name: SPRING_CLOUD_CONFIG_RETRY_MAX_ATTEMPTS
+              value: "10"
+            - name: SPRING_CLOUD_CONFIG_RETRY_INITIAL_INTERVAL
+              value: "3000"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: ACCOUNT_DB_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: JWT_SECRET
+            - name: STRIPE_API_KEY          
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: STRIPE_API_KEY
+            - name: STRIPE_WEBHOOK_SECRET   
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: STRIPE_WEBHOOK_SECRET
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 250m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /account/actuator/health
+              port: 9050
+            initialDelaySeconds: 120   
+            periodSeconds: 15
+            timeoutSeconds: 5         
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /account/actuator/health
+              port: 9050
+            failureThreshold: 30 # 30 * 10s = 300s max startup time
+            periodSeconds: 10
+            timeoutSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: account-service
+  namespace: lovable-core
+spec:
+  selector:
+    app: account-service
+  ports:
+    - port: 80
+      targetPort: 9050

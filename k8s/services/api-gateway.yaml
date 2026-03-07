@@ -1,0 +1,67 @@
+# k8s/services/api-gateway.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: lovable-core
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+        - name: api-gateway
+          image: anuj55149/lovable-api-gateway-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: k8s
+            - name: CONFIG_SERVER_URL
+              value: http://config-service.lovable-core.svc.cluster.local:8888
+            - name: SPRING_CLOUD_CONFIG_FAIL_FAST
+              value: "false"
+            - name: SPRING_CLOUD_CONFIG_RETRY_MAX_ATTEMPTS
+              value: "10"
+            - name: SPRING_CLOUD_CONFIG_RETRY_INITIAL_INTERVAL
+              value: "3000"
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: JWT_SECRET
+          resources:
+            requests:
+              cpu: 100m
+              memory: 192Mi
+            limits:
+              cpu: 250m
+              memory: 384Mi
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 90
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+  namespace: lovable-core
+spec:
+  # type: LoadBalancer
+  selector:
+    app: api-gateway
+  ports:
+    - port: 80
+      targetPort: 8080

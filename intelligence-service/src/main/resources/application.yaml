@@ -2,4 +2,4 @@ spring:
   application:
     name: intelligence-service
   config:
-    import: configserver:http://localhost:8888
+    import: configserver:${CONFIG_SERVER_URL:http://localhost:8888}

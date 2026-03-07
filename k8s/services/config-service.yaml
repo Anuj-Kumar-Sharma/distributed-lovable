@@ -1,0 +1,63 @@
+# k8s/services/config-service.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config-service
+  namespace: lovable-core
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: config-service
+  template:
+    metadata:
+      labels:
+        app: config-service
+    spec:
+      containers:
+        - name: config-service
+          image: anuj55149/lovable-config-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8888
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: k8s
+            - name: GIT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: GIT_USERNAME
+            - name: GIT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: GIT_PASSWORD
+          resources:
+            requests:
+              cpu: 100m
+              memory: 192Mi
+            limits:
+              cpu: 250m
+              memory: 384Mi
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8888
+            initialDelaySeconds: 90
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: config-service
+  namespace: lovable-core
+spec:
+  selector:
+    app: config-service
+  ports:
+    - port: 8888
+      targetPort: 8888

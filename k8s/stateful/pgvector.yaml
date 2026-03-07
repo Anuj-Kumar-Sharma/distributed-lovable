@@ -1,0 +1,125 @@
+# k8s/stateful/pgvector.yaml
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pgvector-init
+  namespace: lovable-core
+data:
+  init.sh: |
+    #!/bin/bash
+    set -e
+
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" <<-EOSQL
+      CREATE DATABASE account_db;
+      CREATE DATABASE workspace_db;
+      CREATE DATABASE intelligence_db;
+
+      CREATE USER account_user WITH PASSWORD '$ACCOUNT_DB_PASSWORD';
+      CREATE USER workspace_user WITH PASSWORD '$WORKSPACE_DB_PASSWORD';
+      CREATE USER intelligence_user WITH PASSWORD '$INTELLIGENCE_DB_PASSWORD';
+
+      GRANT ALL PRIVILEGES ON DATABASE account_db TO account_user;
+      GRANT ALL PRIVILEGES ON DATABASE workspace_db TO workspace_user;
+      GRANT ALL PRIVILEGES ON DATABASE intelligence_db TO intelligence_user;
+    EOSQL
+
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "account_db" <<-EOSQL
+      GRANT ALL ON SCHEMA public TO account_user;
+    EOSQL
+
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "workspace_db" <<-EOSQL
+      GRANT ALL ON SCHEMA public TO workspace_user;
+    EOSQL
+
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "intelligence_db" <<-EOSQL
+      GRANT ALL ON SCHEMA public TO intelligence_user;
+    EOSQL
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: pgvector
+  namespace: lovable-core
+spec:
+  selector:
+    matchLabels:
+      app: pgvector
+  serviceName: pgvector
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: pgvector
+    spec:
+      containers:
+        - name: pgvector
+          image: pgvector/pgvector:pg16
+          ports:
+            - containerPort: 5432
+          env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_DB
+              value: postgres          # default db, required by the image
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_PASSWORD
+            - name: ACCOUNT_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: ACCOUNT_DB_PASSWORD
+            - name: WORKSPACE_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: WORKSPACE_DB_PASSWORD
+            - name: INTELLIGENCE_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: INTELLIGENCE_DB_PASSWORD
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 250m
+              memory: 512Mi
+          volumeMounts:
+            - name: pgdata
+              mountPath: /var/lib/postgresql/data
+            - name: initdb
+              mountPath: /docker-entrypoint-initdb.d
+      volumes:
+        - name: initdb
+          configMap:
+            name: pgvector-init
+            defaultMode: 0755         # must be executable for .sh files
+  volumeClaimTemplates:
+    - metadata:
+        name: pgdata
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 10Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgvector
+  namespace: lovable-core
+spec:
+  clusterIP: None   # headless — required for StatefulSet DNS
+  selector:
+    app: pgvector
+  ports:
+    - port: 5432
