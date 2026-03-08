@@ -1,0 +1,50 @@
+# k8s/proxy/proxy-deployment.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lovable-me-proxy
+  namespace: lovable-core
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: lovable-me-proxy
+  template:
+    metadata:
+      labels:
+        app: lovable-me-proxy
+    spec:
+      containers:
+        - name: lovable-me-proxy
+          image: anuj55149/lovable-me-proxy:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "250m"
+              memory: "512Mi"
+          envFrom:
+            - configMapRef:
+                name: lovable-shared-config
+          env:
+            - name: REDIS_URL
+              value: "redis://redis-0.redis.lovable-core.svc.cluster.local:6379" 
+            - name: PORT
+              value: "80"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lovable-me-proxy
+  namespace: lovable-core
+spec:
+  selector:
+    app: lovable-me-proxy
+  ports:
+    - port: 80
+      targetPort: 80

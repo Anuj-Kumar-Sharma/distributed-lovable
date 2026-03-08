@@ -1,0 +1,13 @@
+{
+  "name": "shuttle-proxy",
+  "version": "1.0.0",
+  "description": "Wildcard Proxy for Project Previews",
+  "main": "index.js",
+  "dependencies": {
+    "http-proxy": "^1.18.1",
+    "ioredis": "^5.3.5"
+  },
+  "scripts": {
+    "start": "node index.js"
+  }
+}

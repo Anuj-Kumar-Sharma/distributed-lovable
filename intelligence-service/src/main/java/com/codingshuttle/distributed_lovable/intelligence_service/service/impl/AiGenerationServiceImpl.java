@@ -87,17 +87,18 @@ public class AiGenerationServiceImpl implements AiGenerationService {
                 .stream()
                 .chatResponse()
                 .doOnNext(response -> {
-                    String content = response.getResult().getOutput().getText();
+                    if (response.getResults() != null && !response.getResults().isEmpty()) {
+                        String content = response.getResult().getOutput().getText();
 
-                    if(content != null && !content.isEmpty() && endTime.get() == 0) { // first non-empty chunk received
-                        endTime.set(System.currentTimeMillis());
+                        if(content != null && !content.isEmpty() && endTime.get() == 0) { // first non-empty chunk received
+                            endTime.set(System.currentTimeMillis());
+                        }
+                        if(response.getMetadata().getUsage() != null) {
+                            usageRef.set(response.getMetadata().getUsage());
+                        }
+                        fullResponseBuffer.append(content);
                     }
 
-                    if(response.getMetadata().getUsage() != null) {
-                        usageRef.set(response.getMetadata().getUsage());
-                    }
-
-                    fullResponseBuffer.append(content);
                 })
                 .doOnComplete(() -> {
                     Schedulers.boundedElastic().schedule(() -> {
@@ -109,8 +110,11 @@ public class AiGenerationServiceImpl implements AiGenerationService {
                 })
                 .doOnError(error -> log.error("Error during streaming for projectId: {}", projectId))
                 .map(response -> {
-                    String text = response.getResult().getOutput().getText();
-                    return new StreamResponse(text != null ? text : "");
+                    if (response.getResults() != null && !response.getResults().isEmpty()) {
+                        String text = response.getResult().getOutput().getText();
+                        return new StreamResponse(text != null ? text : "");
+                    }
+                    return new StreamResponse("");
                 });
     }
 

@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: runner-pool
+  namespace: lovable-previews
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: runner
+      status: idle
+  template:
+    metadata:
+      labels:
+        app: runner
+        status: idle
+    spec:
+      volumes:
+        - name: workspace
+          emptyDir: {}
+      containers:
+        # 1. THE RUNNER (Vite / Node.js)
+        - name: runner
+          image: node:20-alpine
+          workingDir: /app
+          command: ["/bin/sh", "-c", "sleep infinity"]
+          volumeMounts:
+            - name: workspace
+              mountPath: /app
+          ports:
+            - containerPort: 5173
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+
+        # 2. THE SYNCER (MinIO mc)
+        - name: syncer
+          image: minio/mc
+          command: ["/bin/sh", "-c", "sleep infinity"]
+          env:
+            - name: MINIO_USER
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: MINIO_ROOT_USER
+            - name: MINIO_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: MINIO_ROOT_PASSWORD
+            # Constructing the host URL for the internal MinIO service
+            - name: MC_HOST_myminio
+              value: "http://$(MINIO_USER):$(MINIO_PASS)@minio.lovable-core.svc.cluster.local:9000"
+          volumeMounts:
+            - name: workspace
+              mountPath: /app
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"

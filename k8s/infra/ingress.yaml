@@ -1,0 +1,57 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: lovable-main-ingress
+  namespace: lovable-core
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: "nginx"
+  rules:
+  # 1. Main Website Route (The Frontend!)
+  - host: "codingshuttle.in"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: lovable-frontend
+            port:
+              number: 80
+              
+  - host: "www.codingshuttle.in"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: lovable-frontend
+            port:
+              number: 80
+
+  # 2. Previews Route
+  - host: "*.previews.codingshuttle.in"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: lovable-me-proxy
+            port:
+              number: 80
+  
+  # 3. API Gateway Route
+  - host: "api.codingshuttle.in"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway
+            port:
+              number: 80

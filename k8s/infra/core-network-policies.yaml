@@ -1,0 +1,64 @@
+# k8s/infra/core-network-policies.yaml
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-internal-only
+  namespace: lovable-core
+spec:
+  podSelector: {} # Applies to all pods in lovable-core
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: lovable-core
+
+---
+# 2. NEW POLICY: Allow Previews to talk to MinIO (for file storage)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-previews-to-minio
+  namespace: lovable-core
+spec:
+  # Target ONLY the MinIO pod (adjust matchLabels if your MinIO pod label is different)
+  podSelector: 
+    matchLabels:
+      app: minio # or statefulset.kubernetes.io/pod-name: minio-0
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow traffic FROM the lovable-previews namespace
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: lovable-previews
+      # ONLY on port 9000
+      ports:
+        - protocol: TCP
+          port: 9000
+
+---
+# 3. NEW POLICY: Allow NGINX Ingress to talk to API Gateway and Proxy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-nginx-ingress
+  namespace: lovable-core
+spec:
+  # This applies to the services Nginx needs to reach
+  podSelector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values: ["api-gateway", "lovable-me-proxy", "lovable-frontend"] # Add any other services that need to be exposed via Ingress
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow traffic FROM the ingress-nginx namespace
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx

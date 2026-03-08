@@ -1,0 +1,58 @@
+# k8s/infra/preview-network-policies.yaml
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: strict-preview-sandbox
+  namespace: lovable-previews
+spec:
+  podSelector: {} # Applies to all user runner pods
+  policyTypes:
+    - Ingress
+    - Egress
+  
+  # --- INCOMING TRAFFIC (Ingress) ---
+  ingress:
+    # 1. ONLY accept traffic from the lovable-me-proxy
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: lovable-core
+          podSelector:
+            matchLabels:
+              app: lovable-me-proxy
+      ports:
+        - protocol: TCP
+          port: 5173 # Vite dev server port
+
+  # --- OUTGOING TRAFFIC (Egress) ---
+  egress:
+    # 1. ALLOW DNS Resolution (Crucial for npm and K8s internal routing)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+    # 2. ALLOW Syncer to talk to MinIO in lovable-core
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: lovable-core
+      ports:
+        - protocol: TCP
+          port: 9000
+
+    # 3. ALLOW Internet access (for `npm install` to work)
+    # BUT explicitly BLOCK internal private IP ranges to prevent hacking
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8     # Common Kubernetes internal networks
+              - 192.168.0.0/16 
+              - 172.16.0.0/12
