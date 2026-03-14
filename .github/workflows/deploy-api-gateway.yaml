@@ -1,15 +1,15 @@
-name: Deploy Config Service
+name: Deploy API Gateway Service
 
 on:
   push:
     branches:
       - master
     paths:
-      - 'config-service/**'
+      - 'api-gateway/**'
 
 env:
-  SERVICE_NAME: config-service
-  IMAGE_NAME: anuj55149/lovable-config-service
+  SERVICE_NAME: api-gateway
+  IMAGE_NAME: anuj55149/lovable-api-gateway
 
 permissions:
   id-token: write

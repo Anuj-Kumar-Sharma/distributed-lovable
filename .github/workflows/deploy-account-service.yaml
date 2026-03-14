@@ -1,15 +1,15 @@
-name: Deploy Config Service
+name: Deploy Account Service
 
 on:
   push:
     branches:
       - master
     paths:
-      - 'config-service/**'
+      - 'account-service/**'
 
 env:
-  SERVICE_NAME: config-service
-  IMAGE_NAME: anuj55149/lovable-config-service
+  SERVICE_NAME: account-service
+  IMAGE_NAME: anuj55149/lovable-account-service
 
 permissions:
   id-token: write
